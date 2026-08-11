@@ -1,13 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, Calendar, Clock, PawPrint, MapPin, Star } from 'lucide-react';
+import { ArrowLeft, Calendar, CheckCircle2, Clock, Loader2, MapPin, PawPrint, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import Navbar from '@/components/layout/Navbar';
-import { MOCK_PROVIDERS } from '@/constants/mockData';
+import { supabase } from '@/lib/supabase';
 import { usePets } from '@/hooks/usePets';
 import { useAuth } from '@/hooks/useAuth';
-import { Booking } from '@/types';
+import { ServiceProvider } from '@/types';
 import { toast } from 'sonner';
 
 const TIME_SLOTS = ['9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM'];
@@ -16,15 +16,95 @@ const BookingPage = () => {
   const { providerId } = useParams<{ providerId: string }>();
   const navigate = useNavigate();
   const { pets } = usePets();
-  const { user, login } = useAuth();
+  const { user } = useAuth();
 
-  const provider = MOCK_PROVIDERS.find(p => p.id === providerId);
-
-  const [selectedPetId, setSelectedPetId] = useState(pets[0]?.id ?? '');
+  const [provider, setProvider] = useState<ServiceProvider | null>(null);
+  const [loadingProvider, setLoadingProvider] = useState(true);
+  const [selectedPetId, setSelectedPetId] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
   const [notes, setNotes] = useState('');
   const [isBooked, setIsBooked] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (pets.length > 0 && !selectedPetId) setSelectedPetId(pets[0].id);
+  }, [pets]);
+
+  useEffect(() => {
+    if (!providerId) return;
+    fetchProvider();
+  }, [providerId]);
+
+  const fetchProvider = async () => {
+    const { data, error } = await supabase.from('providers').select('*').eq('id', providerId).maybeSingle();
+    if (!error && data) {
+      const p = data as Record<string, unknown>;
+      setProvider({
+        id: p.id as string,
+        name: p.name as string,
+        businessName: p.business_name as string,
+        type: p.type as ServiceProvider['type'],
+        rating: p.rating as number,
+        reviewCount: p.review_count as number,
+        location: p.location as string,
+        suburb: p.suburb as string,
+        distance: 0,
+        lat: p.lat as number,
+        lng: p.lng as number,
+        priceFrom: p.price_from as number,
+        priceUnit: p.price_unit as string,
+        photo: p.photo as string,
+        verified: p.verified as boolean,
+        available: p.available as boolean,
+        tags: (p.tags as string[]) || [],
+        description: p.description as string,
+        responseTime: p.response_time as string,
+        isEmergency: p.is_emergency as boolean,
+        openNow: p.open_now as boolean,
+        phone: p.phone as string,
+      });
+    }
+    setLoadingProvider(false);
+  };
+
+  const handleConfirm = async () => {
+    if (!selectedDate || !selectedTime) { toast.error('Please select a date and time.'); return; }
+    if (!user) { navigate('/auth'); return; }
+    if (!provider || !selectedPetId) return;
+    setSaving(true);
+
+    const { data, error } = await supabase.from('bookings').insert({
+      owner_id: user.id,
+      provider_id: provider.id,
+      pet_id: selectedPetId,
+      date: selectedDate,
+      time: selectedTime,
+      status: 'upcoming',
+      total: provider.priceFrom,
+      notes,
+    }).select().single();
+
+    if (error) {
+      toast.error('Failed to create booking. Please try again.');
+      setSaving(false);
+    } else {
+      console.log('Booking created:', data);
+      setIsBooked(true);
+    }
+    setSaving(false);
+  };
+
+  const selectedPet = pets.find(p => p.id === selectedPetId);
+  const minDate = new Date().toISOString().split('T')[0];
+
+  if (loadingProvider) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (!provider) {
     return (
@@ -36,35 +116,6 @@ const BookingPage = () => {
       </div>
     );
   }
-
-  const selectedPet = pets.find(p => p.id === selectedPetId);
-  const minDate = new Date().toISOString().split('T')[0];
-
-  const handleConfirm = () => {
-    if (!selectedDate || !selectedTime) {
-      toast.error('Please select a date and time slot.');
-      return;
-    }
-    if (!user) login();
-
-    const booking: Booking = {
-      id: `book-${Date.now()}`,
-      providerId: provider.id,
-      providerName: provider.businessName,
-      providerType: provider.type,
-      petId: selectedPetId,
-      petName: selectedPet?.name ?? '',
-      date: selectedDate,
-      time: selectedTime,
-      status: 'upcoming',
-      total: provider.priceFrom,
-      notes,
-    };
-
-    const existing: Booking[] = JSON.parse(localStorage.getItem('omnipaws_bookings') ?? '[]');
-    localStorage.setItem('omnipaws_bookings', JSON.stringify([booking, ...existing]));
-    setIsBooked(true);
-  };
 
   if (isBooked) {
     return (
@@ -78,8 +129,7 @@ const BookingPage = () => {
               </div>
             </div>
             <h2 className="text-2xl font-extrabold text-foreground mb-2">Booking Confirmed!</h2>
-            <p className="text-muted-foreground mb-8">Your booking has been placed and the provider has been notified.</p>
-
+            <p className="text-muted-foreground mb-8">Your booking has been placed and saved to your dashboard.</p>
             <div className="bg-slate-50 rounded-2xl p-5 text-left space-y-3 mb-8">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Provider</span>
@@ -91,9 +141,7 @@ const BookingPage = () => {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Date</span>
-                <span className="font-semibold">
-                  {selectedDate && new Date(selectedDate).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'long' })}
-                </span>
+                <span className="font-semibold">{selectedDate && new Date(selectedDate).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'long' })}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Time</span>
@@ -104,12 +152,11 @@ const BookingPage = () => {
                 <span className="font-extrabold text-primary text-base">A${provider.priceFrom}</span>
               </div>
             </div>
-
-            <Button
-              className="w-full bg-primary text-white font-semibold rounded-xl h-12"
-              onClick={() => navigate('/dashboard')}
-            >
+            <Button className="w-full bg-primary text-white font-semibold rounded-xl h-12 mb-3" onClick={() => navigate('/dashboard')}>
               View in Dashboard
+            </Button>
+            <Button variant="outline" className="w-full rounded-xl h-12" onClick={() => navigate(`/messages/new`)}>
+              Message Provider
             </Button>
           </div>
         </div>
@@ -121,15 +168,10 @@ const BookingPage = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
-        <button
-          onClick={() => navigate('/services')}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
-        >
+        <button onClick={() => navigate('/services')} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to Services
         </button>
-
         <div className="grid lg:grid-cols-5 gap-8">
-          {/* Form */}
           <div className="lg:col-span-3 space-y-6">
             <div>
               <h1 className="text-2xl font-extrabold text-foreground mb-1">Book Appointment</h1>
@@ -141,55 +183,39 @@ const BookingPage = () => {
               <h3 className="font-bold text-foreground mb-3 flex items-center gap-2">
                 <PawPrint className="w-4 h-4 text-primary" /> Select Pet
               </h3>
-              <div className="grid grid-cols-2 gap-3">
-                {pets.map(pet => (
-                  <button
-                    key={pet.id}
-                    onClick={() => setSelectedPetId(pet.id)}
-                    className={`flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
-                      selectedPetId === pet.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
-                    }`}
-                  >
-                    <img src={pet.photo} alt={pet.name} className="w-10 h-10 rounded-lg object-cover shrink-0" />
-                    <div>
-                      <p className="font-semibold text-foreground text-sm">{pet.name}</p>
-                      <p className="text-xs text-muted-foreground">{pet.breed}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
+              {pets.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No pets yet. <a href="/dashboard" className="text-primary underline">Add a pet first</a>.</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  {pets.map(pet => (
+                    <button key={pet.id} onClick={() => setSelectedPetId(pet.id)} className={`flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${selectedPetId === pet.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'}`}>
+                      <img src={pet.photo} alt={pet.name} className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                      <div>
+                        <p className="font-semibold text-foreground text-sm">{pet.name}</p>
+                        <p className="text-xs text-muted-foreground">{pet.breed}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Date Selection */}
+            {/* Date */}
             <div className="bg-white rounded-2xl border border-border p-5">
               <h3 className="font-bold text-foreground mb-3 flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-primary" /> Select Date
               </h3>
-              <input
-                type="date"
-                min={minDate}
-                value={selectedDate}
-                onChange={e => setSelectedDate(e.target.value)}
-                className="w-full h-11 px-3 rounded-xl border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-white"
-              />
+              <input type="date" min={minDate} value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-full h-11 px-3 rounded-xl border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-white" />
             </div>
 
-            {/* Time Slots */}
+            {/* Time */}
             <div className="bg-white rounded-2xl border border-border p-5">
               <h3 className="font-bold text-foreground mb-3 flex items-center gap-2">
                 <Clock className="w-4 h-4 text-primary" /> Select Time
               </h3>
               <div className="grid grid-cols-4 gap-2">
                 {TIME_SLOTS.map(time => (
-                  <button
-                    key={time}
-                    onClick={() => setSelectedTime(time)}
-                    className={`py-2.5 rounded-xl text-sm font-semibold border-2 transition-all ${
-                      selectedTime === time
-                        ? 'border-primary bg-primary text-white'
-                        : 'border-border hover:border-primary/40 text-foreground'
-                    }`}
-                  >
+                  <button key={time} onClick={() => setSelectedTime(time)} className={`py-2.5 rounded-xl text-sm font-semibold border-2 transition-all ${selectedTime === time ? 'border-primary bg-primary text-white' : 'border-border hover:border-primary/40 text-foreground'}`}>
                     {time}
                   </button>
                 ))}
@@ -199,18 +225,11 @@ const BookingPage = () => {
             {/* Notes */}
             <div className="bg-white rounded-2xl border border-border p-5">
               <h3 className="font-bold text-foreground mb-3">Additional Notes (optional)</h3>
-              <Textarea
-                placeholder="Any special requirements or information about your pet..."
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
-                className="rounded-xl border-border resize-none min-h-[90px]"
-              />
+              <Textarea placeholder="Any special requirements about your pet..." value={notes} onChange={e => setNotes(e.target.value)} className="rounded-xl border-border resize-none min-h-[90px]" />
             </div>
 
-            <Button
-              className="w-full bg-primary text-white font-semibold rounded-xl h-13 text-base shadow-lg shadow-primary/30 hover:bg-primary/90"
-              onClick={handleConfirm}
-            >
+            <Button className="w-full bg-primary text-white font-semibold rounded-xl h-12 text-base shadow-lg shadow-primary/30 hover:bg-primary/90" onClick={handleConfirm} disabled={saving}>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               Confirm Booking — A${provider.priceFrom}
             </Button>
           </div>
@@ -218,11 +237,7 @@ const BookingPage = () => {
           {/* Provider Summary */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-2xl border border-border p-5 sticky top-24">
-              <img
-                src={provider.photo}
-                alt={provider.name}
-                className="w-full h-40 object-cover rounded-xl mb-4"
-              />
+              <img src={provider.photo} alt={provider.name} className="w-full h-40 object-cover rounded-xl mb-4" />
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="font-bold text-foreground">{provider.businessName}</h3>
                 {provider.verified && <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />}
@@ -236,17 +251,9 @@ const BookingPage = () => {
                 </div>
                 <div className="flex items-center gap-1 text-muted-foreground">
                   <MapPin className="w-3.5 h-3.5" />
-                  <span>{provider.distance}km away</span>
+                  <span>{provider.suburb}</span>
                 </div>
               </div>
-
-              {provider.aiMatchScore !== undefined && (
-                <div className="bg-primary/10 rounded-xl p-3 mb-4 flex items-center justify-between">
-                  <span className="text-sm font-semibold text-primary">Your AI Match Score</span>
-                  <span className="text-2xl font-extrabold text-primary">{provider.aiMatchScore}%</span>
-                </div>
-              )}
-
               <div className="pt-4 border-t border-border">
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-muted-foreground">Service fee</span>

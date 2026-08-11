@@ -1,6 +1,7 @@
-import { User, Pet, ServiceProvider, Booking, HealthAlert } from '@/types';
+import { AuthUser, Pet, ServiceProvider, Booking, HealthAlert } from '@/types';
+export type { AuthUser as User };
 
-export const MOCK_USER: User = {
+export const MOCK_USER: AuthUser = {
   id: 'user-001',
   name: 'Sarah Mitchell',
   email: 'sarah.mitchell@email.com',
@@ -8,7 +9,7 @@ export const MOCK_USER: User = {
   location: 'Bondi Beach, NSW',
   memberSince: '2023-03-15',
   verified: true,
-  petsCount: 2,
+  role: 'owner',
 };
 
 export const MOCK_PETS: Pet[] = [
@@ -82,6 +83,9 @@ export const MOCK_PROVIDERS: ServiceProvider[] = [
     tags: ['Dogs', 'Cats', 'Emergency Care', 'Surgery'],
     description: 'Over 15 years of experience in small animal veterinary medicine. Specialising in preventive care and complex surgery.',
     responseTime: '< 1 hour',
+    isEmergency: true,
+    openNow: true,
+    phone: '+61 2 9365 1234',
   },
   {
     id: 'prov-002',
@@ -102,6 +106,9 @@ export const MOCK_PROVIDERS: ServiceProvider[] = [
     tags: ['Dogs', 'House Sitting', 'Dog Walking', 'First Aid Certified'],
     description: 'Certified pet sitter with first aid training. I treat every pet like my own. Large backyard for dogs to play.',
     responseTime: '< 30 min',
+    isEmergency: false,
+    openNow: true,
+    phone: '+61 400 111 222',
   },
   {
     id: 'prov-003',
@@ -122,6 +129,9 @@ export const MOCK_PROVIDERS: ServiceProvider[] = [
     tags: ['All Breeds', 'De-shedding', 'Nail Trim', 'Aromatherapy Bath'],
     description: 'Award-winning groomer with specialty in breed-specific cuts. Mobile grooming van available for home visits.',
     responseTime: '< 2 hours',
+    isEmergency: false,
+    openNow: true,
+    phone: '+61 400 333 444',
   },
   {
     id: 'prov-004',
@@ -142,6 +152,9 @@ export const MOCK_PROVIDERS: ServiceProvider[] = [
     tags: ['Cats Only', 'Feline Specialist', 'Behaviour', 'Dental'],
     description: 'Cat-only clinic providing a stress-free environment. Feline behaviour consultations and telehealth available.',
     responseTime: '< 2 hours',
+    isEmergency: false,
+    openNow: false,
+    phone: '+61 2 9319 5555',
   },
   {
     id: 'prov-005',
@@ -162,6 +175,9 @@ export const MOCK_PROVIDERS: ServiceProvider[] = [
     tags: ['Obedience', 'Puppy Classes', 'Anxiety Training', 'Agility'],
     description: 'DELTA-certified dog trainer using positive reinforcement. Puppy school and advanced obedience classes.',
     responseTime: '< 3 hours',
+    isEmergency: false,
+    openNow: true,
+    phone: '+61 400 555 666',
   },
   {
     id: 'prov-006',
@@ -182,6 +198,9 @@ export const MOCK_PROVIDERS: ServiceProvider[] = [
     tags: ['Dogs & Cats', '24/7 Care', 'Outdoor Play Area', 'Webcam Access'],
     description: 'Boutique boarding facility with 24/7 supervision. Small groups ensure personalised attention. Live webcam access.',
     responseTime: '< 1 hour',
+    isEmergency: false,
+    openNow: true,
+    phone: '+61 400 777 888',
   },
 ];
 

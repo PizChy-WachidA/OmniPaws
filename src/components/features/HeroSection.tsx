@@ -9,8 +9,7 @@ const HeroSection = () => {
   const { login } = useAuth();
 
   const handleGetStarted = () => {
-    login();
-    navigate('/dashboard');
+    navigate('/auth');
   };
 
   const trustItems = [
@@ -48,7 +47,7 @@ const HeroSection = () => {
             <div className="flex flex-wrap gap-3">
               <Button
                 size="lg"
-                className="bg-primary hover:bg-primary/90 text-white px-8 h-13 text-base font-semibold rounded-xl shadow-lg shadow-primary/30 transition-all hover:shadow-primary/40 hover:-translate-y-0.5"
+                className="bg-primary hover:bg-primary/90 text-white px-8 text-base font-semibold rounded-xl shadow-lg shadow-primary/30 transition-all hover:shadow-primary/40 hover:-translate-y-0.5"
                 onClick={handleGetStarted}
               >
                 Get Started Free →

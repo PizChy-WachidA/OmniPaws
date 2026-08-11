@@ -1,29 +1,33 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { PawPrint, Menu, X, Bell, LogOut, LayoutDashboard } from 'lucide-react';
+import { PawPrint, Menu, X, Bell, LogOut, LayoutDashboard, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { user, login, logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   const navLinks = [
-    { label: 'How It Works', href: '/#how-it-works' },
     { label: 'Services', href: '/services' },
-    { label: 'Insurance', href: '/#insurance' },
+    { label: 'Emergency Map', href: '/emergency' },
+    { label: 'Insurance', href: '/insurance' },
   ];
 
   const handleGetStarted = () => {
-    login();
-    navigate('/dashboard');
+    navigate('/auth');
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
   };
+
+  const dashboardPath =
+    user?.role === 'provider' ? '/provider/dashboard'
+    : user?.role === 'admin' ? '/admin'
+    : '/dashboard';
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-border">
@@ -40,29 +44,36 @@ const Navbar = () => {
 
           <div className="hidden md:flex items-center gap-8">
             {navLinks.map(link => (
-              <a
+              <Link
                 key={link.label}
-                href={link.href}
+                to={link.href}
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
                 {link.label}
-              </a>
+              </Link>
             ))}
           </div>
 
           <div className="hidden md:flex items-center gap-2">
             {user ? (
               <>
+                <Button variant="ghost" size="icon" className="relative" onClick={() => navigate('/emergency')}>
+                  <AlertTriangle className="w-5 h-5 text-red-500" />
+                </Button>
+                <Button variant="ghost" size="icon" className="relative" onClick={() => navigate('/insurance')}>
+                  <ShieldCheck className="w-5 h-5" />
+                </Button>
                 <Button variant="ghost" size="icon" className="relative">
                   <Bell className="w-5 h-5" />
                   <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full" />
                 </Button>
-                <Link to="/dashboard">
+                <Link to={dashboardPath}>
                   <Button variant="ghost" className="flex items-center gap-2 h-9 px-3">
                     <img
                       src={user.avatar}
                       alt={user.name}
                       className="w-6 h-6 rounded-full object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`; }}
                     />
                     <span className="text-sm font-medium">{user.name.split(' ')[0]}</span>
                     <LayoutDashboard className="w-4 h-4 text-muted-foreground" />
@@ -78,11 +89,7 @@ const Navbar = () => {
                 <Button variant="ghost" size="sm" onClick={handleGetStarted}>
                   Log In
                 </Button>
-                <Button
-                  size="sm"
-                  className="bg-primary text-white hover:bg-primary/90 font-semibold px-5"
-                  onClick={handleGetStarted}
-                >
+                <Button size="sm" className="bg-primary text-white hover:bg-primary/90 font-semibold px-5" onClick={handleGetStarted}>
                   Get Started Free
                 </Button>
               </>
@@ -101,19 +108,19 @@ const Navbar = () => {
       {mobileOpen && (
         <div className="md:hidden bg-white border-t border-border px-4 py-4 space-y-2">
           {navLinks.map(link => (
-            <a
+            <Link
               key={link.label}
-              href={link.href}
+              to={link.href}
               className="block text-sm font-medium text-foreground py-2.5 hover:text-primary transition-colors"
               onClick={() => setMobileOpen(false)}
             >
               {link.label}
-            </a>
+            </Link>
           ))}
           <div className="pt-3 border-t border-border flex flex-col gap-2">
             {user ? (
               <>
-                <Link to="/dashboard">
+                <Link to={dashboardPath}>
                   <Button className="w-full bg-primary text-white" onClick={() => setMobileOpen(false)}>
                     My Dashboard
                   </Button>

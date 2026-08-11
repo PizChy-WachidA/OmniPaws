@@ -8,7 +8,6 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import HeroSection from '@/components/features/HeroSection';
 import { TESTIMONIALS } from '@/constants/mockData';
-import { useAuth } from '@/hooks/useAuth';
 
 const FEATURES = [
   {
@@ -79,8 +78,7 @@ const Index = () => {
   const { login } = useAuth();
 
   const handleGetStarted = () => {
-    login();
-    navigate('/dashboard');
+    navigate('/auth');
   };
 
   return (

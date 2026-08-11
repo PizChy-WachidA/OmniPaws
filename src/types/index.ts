@@ -1,4 +1,4 @@
-export interface User {
+export interface AuthUser {
   id: string;
   name: string;
   email: string;
@@ -6,8 +6,11 @@ export interface User {
   location: string;
   memberSince: string;
   verified: boolean;
-  petsCount: number;
+  role: 'owner' | 'provider' | 'admin';
 }
+
+// Keep legacy alias
+export type User = AuthUser;
 
 export type PetSpecies = 'dog' | 'cat' | 'bird' | 'rabbit' | 'reptile';
 
@@ -58,6 +61,8 @@ export interface ServiceProvider {
   location: string;
   suburb: string;
   distance: number;
+  lat?: number;
+  lng?: number;
   priceFrom: number;
   priceUnit: string;
   photo: string;
@@ -67,6 +72,9 @@ export interface ServiceProvider {
   tags: string[];
   description: string;
   responseTime: string;
+  isEmergency?: boolean;
+  openNow?: boolean;
+  phone?: string;
 }
 
 export interface Booking {
@@ -78,9 +86,10 @@ export interface Booking {
   petName: string;
   date: string;
   time: string;
-  status: 'upcoming' | 'completed' | 'cancelled';
+  status: 'upcoming' | 'confirmed' | 'completed' | 'cancelled';
   total: number;
   notes?: string;
+  ownerId?: string;
 }
 
 export interface HealthAlert {
@@ -91,4 +100,45 @@ export interface HealthAlert {
   message: string;
   urgency: 'low' | 'medium' | 'high';
   dueDate: string;
+}
+
+export interface Message {
+  id: string;
+  bookingId: string;
+  senderId: string;
+  senderName?: string;
+  senderAvatar?: string;
+  content: string;
+  attachmentUrl?: string;
+  attachmentType?: string;
+  readBy: string[];
+  createdAt: string;
+}
+
+export interface InsurancePlan {
+  id: string;
+  tier: 'basic' | 'standard' | 'premium';
+  name: string;
+  monthlyPrice: number;
+  features: string[];
+  coverageLimit: number;
+  excess: number;
+}
+
+export interface ProviderAvailability {
+  id: string;
+  providerId: string;
+  date: string;
+  slots: string[];
+  blocked: boolean;
+}
+
+export interface Review {
+  id: string;
+  bookingId: string;
+  providerId: string;
+  ownerId: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
 }
